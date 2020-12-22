@@ -127,3 +127,5 @@ def create_image_symlinks(args):
             os.symlink(src_path, dst_path)
 
     print('Finished creating symlinks')
+
+    return (y_train, y_val, y_test)

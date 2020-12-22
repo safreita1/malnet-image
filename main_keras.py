@@ -11,6 +11,13 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import numpy as np
 import tensorflow as tf
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
 
 from tqdm import tqdm
 from pprint import pprint
@@ -21,6 +28,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import confusion_matrix, f1_score, classification_report, roc_curve, roc_auc_score
 
 from process import create_image_symlinks
+from losses import categorical_focal_loss
 
 
 class Metrics(Callback):
@@ -98,6 +106,19 @@ def add_poisson_noise(img):
     np.clip(noisy_img, 0., 255.)
     return noisy_img
 
+def get_effective_class_weights(args):
+    '''
+        Determines class weighting according to the following paper
+        - https://arxiv.org/abs/1901.05555
+    ''' 
+
+    unique, class_frequencies = np.unique(args['y_train'], return_counts=True)
+    effective_num = [(1-args['reweight_beta']) / (1 - np.power(args['reweight_beta'], c_i)) for c_i in class_frequencies]
+    class_weights = effective_num / sum(effective_num) * args['num_classes']
+    print('calculated class frequencies')
+    class_weights = {k:v for k,v in enumerate(class_weights)}
+    return class_weights
+
 
 def evaluate(data_gen, model):
     y_pred = []
@@ -131,7 +152,9 @@ def train_model(args, train_gen, val_gen):
     os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
     os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(d) for d in args['devices'])
 
-    args['log_dir'] = os.getcwd() + '/info/logs/group={}/color={}/pretrain={}/model={},epochs={}/'.format(args['group'], args['color_mode'], args['pretrain'], args['model'], args['epochs'])
+    args['log_dir'] = os.getcwd() + '/info/logs/group={}/color={}/pretrain={}/model={}_loss={}_reweight={}_beta={}/epochs={}/'.format(args['group'], args['color_mode'], 
+                                                                                                                            args['pretrain'], args['model'], args['loss_type'],
+                                                                                                                            args['reweight_method'], args['reweight_beta'],  args['epochs'])
     os.makedirs(args['log_dir'], exist_ok=True)
 
     input_shape = (args['im_size'], args['im_size'], args['num_channels'])
@@ -144,12 +167,29 @@ def train_model(args, train_gen, val_gen):
         ModelType, _ = Classifiers.get(args['model'])
         model = ModelType(include_top=True, weights=None, classes=args['num_classes'], input_shape=input_shape)
 
-    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=[])
+    if args['reweight_method'] == 'effective_num':
+        class_weights = get_effective_class_weights(args)  
+    else:
+        class_weights = [1.0/args['num_classes']]*args['num_classes']
+
+    if args['loss_type'] == 'categorical_focal_loss':
+        if type(class_weights) is dict:
+            alpha = [class_weights[i] for i in class_weights.keys()]
+        else:
+            alpha = class_weights
+        loss = [categorical_focal_loss(alpha=[alpha], gamma=2)]
+        class_weights = {i:1.0/args['num_classes'] for i in range(args['num_classes'])} # class weighting already incorporated in focal loss alpha
+    else:
+        loss = args['loss_type']
+
+    model.compile(loss=loss, optimizer='adam', metrics=[])
+
     model.fit(
         train_gen,
         batch_size=args['batch_size'],
         steps_per_epoch=int(train_gen.samples / args['batch_size']),
         epochs=args['epochs'],
+        class_weight = class_weights,
         callbacks=[Metrics(args, val_gen)],
         workers=multiprocessing.cpu_count(),
     )
@@ -194,14 +234,14 @@ def get_data(args):
 def model_experiments():
     from config import args
 
-    args['group'] = 'binary'
-    create_image_symlinks(args)
-    args['group'] = 'type'
-    create_image_symlinks(args)
-    args['group'] = 'family'
-    create_image_symlinks(args)
+    # args['group'] = 'binary'
+    # create_image_symlinks(args)
+    # args['group'] = 'type'
+    # create_image_symlinks(args)
+    # args['group'] = 'family'
+    # create_image_symlinks(args)
 
-    models = ['vgg16']
+    models = ['resnet18']
     groups = ['binary', 'type', 'family']
     pretraining = [False]
 
@@ -220,11 +260,13 @@ def run(args_og, idx, model, group, pretrain):
     args['group'] = group
     args['pretrain'] = pretrain
 
+    y_train, y_val, y_test = create_image_symlinks(args)
     train_gen, val_gen, test_gen = get_data(args)
 
     args['class_indexes'] = list(val_gen.class_indices.values())
     args['class_labels'] = list(val_gen.class_indices.keys())
     args['num_classes'] = len(val_gen.class_indices.keys())
+    args['y_train'] = y_train
 
     model = train_model(args, train_gen, val_gen)
 
@@ -237,12 +279,13 @@ def run(args_og, idx, model, group, pretrain):
 def main():
     from config import args
 
-    create_image_symlinks(args)
+    y_train, y_val, y_test = create_image_symlinks(args)
     train_gen, val_gen, test_gen = get_data(args)
 
     args['class_indexes'] = list(val_gen.class_indices.values())
     args['class_labels'] = list(val_gen.class_indices.keys())
     args['num_classes'] = len(val_gen.class_indices.keys())
+    args['y_train'] = y_train
 
     model = train_model(args, train_gen, val_gen)
 
@@ -253,5 +296,5 @@ def main():
 
 
 if __name__ == '__main__':
-    model_experiments()
-    # main()
+    # model_experiments()
+    main()
