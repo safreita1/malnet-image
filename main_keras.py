@@ -152,7 +152,7 @@ def train_model(args, train_gen, val_gen):
     os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
     os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(d) for d in args['devices'])
 
-    args['log_dir'] = os.getcwd() + '/info/logs/group={}/color={}/pretrain={}/model={}_loss={}_reweight={}_beta={}/epochs={}/'.format(args['group'], args['color_mode'], 
+    args['log_dir'] = os.getcwd() + '/info/logs/group={}/color={}/pretrain={}/model={}_loss={}_reweight={}_beta={}/epochs={}/'.format(args['group'], args['color_mode'],
                                                                                                                             args['pretrain'], args['model'], args['loss_type'],
                                                                                                                             args['reweight_method'], args['reweight_beta'],  args['epochs'])
     os.makedirs(args['log_dir'], exist_ok=True)
@@ -170,7 +170,7 @@ def train_model(args, train_gen, val_gen):
     if args['reweight_method'] == 'effective_num':
         class_weights = get_effective_class_weights(args)  
     else:
-        class_weights = [1.0/args['num_classes']]*args['num_classes']
+        class_weights = [1.0/args['num_classes']] * args['num_classes']
 
     if args['loss_type'] == 'categorical_focal_loss':
         if type(class_weights) is dict:
@@ -178,7 +178,7 @@ def train_model(args, train_gen, val_gen):
         else:
             alpha = class_weights
         loss = [categorical_focal_loss(alpha=[alpha], gamma=2)]
-        class_weights = {i:1.0/args['num_classes'] for i in range(args['num_classes'])} # class weighting already incorporated in focal loss alpha
+        class_weights = {i: 1.0/args['num_classes'] for i in range(args['num_classes'])}  # class weighting already incorporated in focal loss alpha
     else:
         loss = args['loss_type']
 
@@ -189,13 +189,14 @@ def train_model(args, train_gen, val_gen):
         batch_size=args['batch_size'],
         steps_per_epoch=int(train_gen.samples / args['batch_size']),
         epochs=args['epochs'],
-        class_weight = class_weights,
+        class_weight=class_weights,
         callbacks=[Metrics(args, val_gen)],
         workers=multiprocessing.cpu_count(),
     )
 
     # load best model
-    model = tf.keras.models.load_model(args['log_dir'] + 'best_model.pt')
+    model = tf.keras.models.load_model(args['log_dir'] + 'best_model.pt', compile=False)
+    model.compile(loss=loss, optimizer='adam', metrics=[])
 
     return model
 
@@ -234,31 +235,29 @@ def get_data(args):
 def model_experiments():
     from config import args
 
-    # args['group'] = 'binary'
-    # create_image_symlinks(args)
-    # args['group'] = 'type'
-    # create_image_symlinks(args)
-    # args['group'] = 'family'
-    # create_image_symlinks(args)
-
     models = ['resnet18']
-    groups = ['binary', 'type', 'family']
+    groups = ['binary', 'family', 'type']
     pretraining = [False]
+
+    loss_type = 'categorical_focal_loss'  # categorical_crossentropy, categorical_focal_loss
+    reweight_method = 'effective_num'  # effective_num, None
 
     params = list(itertools.product(*[models, groups, pretraining]))
 
-    Parallel(n_jobs=3)(
-        delayed(run)(args, idx, model, group, pretrain)
+    Parallel(n_jobs=1)(
+        delayed(run)(args, idx, model, group, pretrain, loss_type, reweight_method)
         for idx, (model, group, pretrain) in enumerate(tqdm(params)))
 
 
-def run(args_og, idx, model, group, pretrain):
-    idx += 1
+def run(args_og, idx, model, group, pretrain, loss_type, reweight_method):
+    # idx += 3
     args = copy.deepcopy(args_og)
     args['devices'] = [idx]
     args['model'] = model
     args['group'] = group
     args['pretrain'] = pretrain
+    args['loss_type'] = loss_type
+    args['reweight_method'] = reweight_method
 
     y_train, y_val, y_test = create_image_symlinks(args)
     train_gen, val_gen, test_gen = get_data(args)
@@ -296,5 +295,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # model_experiments()
-    main()
+    model_experiments()
+    # main()

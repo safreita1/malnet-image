@@ -15,12 +15,11 @@ args = {
     'base_dir': '/localscratch/sfreitas3/',
     'data_dir': '/localscratch/sfreitas3/malnet-image/data',
     'image_dir': '/localscratch/sfreitas3/malnet-image-256x256/',
-    'loss_type': 'categorical_focal_loss', #categorical_crossentropy, categorical_focal_loss
-    'reweight_method': 'effective_num', # effective_num, None,
-    'reweight_beta': 0.999 # used if 'reweight_method' is set to effective_num
+    'loss_type': 'categorical_focal_loss',  # categorical_crossentropy, categorical_focal_loss
+    'reweight_method': 'effective_num',  # effective_num, None
+    'reweight_beta': 0.999  # used if 'reweight_method' is set to effective_num
 }
 
-args['batch_size'] = args['batch_size'] * len(args['devices'])
 
 if args['color_mode'] == 'grayscale':
     args['num_channels'] = 1
