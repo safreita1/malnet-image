@@ -2,7 +2,6 @@ import os
 import copy
 import itertools
 import multiprocessing
-import imgaug.augmenters as iaa
 from joblib import Parallel, delayed
 
 import warnings
@@ -93,19 +92,6 @@ def log_info(args, epoch, y_true, y_pred, y_scores, data_type='val'):
             pprint('AUC class scores: {}'.format(auc_class_scores), stream=f)
 
 
-# https://stackoverflow.com/questions/43382045/keras-realtime-augmentation-adding-noise-and-contrast
-#         preprocessing_function=add_gaussian_noise,
-def add_gaussian_noise(img):
-    noisy_img = iaa.AdditiveGaussianNoise(scale=0.4*255).augment_image(img)
-    np.clip(noisy_img, 0., 255.)
-    return noisy_img
-
-
-def add_poisson_noise(img):
-    noisy_img = iaa.AdditivePoissonNoise(lam=5.0).augment_image(img)
-    np.clip(noisy_img, 0., 255.)
-    return noisy_img
-
 def get_effective_class_weights(args):
     '''
         Determines class weighting according to the following paper
@@ -116,7 +102,8 @@ def get_effective_class_weights(args):
     effective_num = [(1-args['reweight_beta']) / (1 - np.power(args['reweight_beta'], c_i)) for c_i in class_frequencies]
     class_weights = effective_num / sum(effective_num) * args['num_classes']
     print('calculated class frequencies')
-    class_weights = {k:v for k,v in enumerate(class_weights)}
+    class_weights = {k: v for k, v in enumerate(class_weights)}
+
     return class_weights
 
 
@@ -152,9 +139,8 @@ def train_model(args, train_gen, val_gen):
     os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
     os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(d) for d in args['devices'])
 
-    args['log_dir'] = os.getcwd() + '/info/logs/group={}/color={}/pretrain={}/model={}_loss={}_reweight={}_beta={}/epochs={}/'.format(args['group'], args['color_mode'],
-                                                                                                                            args['pretrain'], args['model'], args['loss_type'],
-                                                                                                                            args['reweight_method'], args['reweight_beta'],  args['epochs'])
+    args['log_dir'] = os.getcwd() + '/info/logs/num_excluded={}/group={}/color={}/pretrain={}/model={}_loss={}_reweight={}_beta={}/epochs={}/'.format(
+        len(args['types_to_exclude']), args['group'], args['color_mode'], args['pretrain'], args['model'], args['loss_type'], args['reweight_method'], args['reweight_beta'],  args['epochs'])
     os.makedirs(args['log_dir'], exist_ok=True)
 
     input_shape = (args['im_size'], args['im_size'], args['num_channels'])
@@ -170,7 +156,7 @@ def train_model(args, train_gen, val_gen):
     if args['reweight_method'] == 'effective_num':
         class_weights = get_effective_class_weights(args)  
     else:
-        class_weights = [1.0/args['num_classes']] * args['num_classes']
+        class_weights = {i: 1 for i in range(args['num_classes'])}
 
     if args['loss_type'] == 'categorical_focal_loss':
         if type(class_weights) is dict:
@@ -178,7 +164,7 @@ def train_model(args, train_gen, val_gen):
         else:
             alpha = class_weights
         loss = [categorical_focal_loss(alpha=[alpha], gamma=2)]
-        class_weights = {i: 1.0/args['num_classes'] for i in range(args['num_classes'])}  # class weighting already incorporated in focal loss alpha
+        class_weights = {i: 1.0 / args['num_classes'] for i in range(args['num_classes'])}  # class weighting already incorporated in focal loss alpha
     else:
         loss = args['loss_type']
 
@@ -201,7 +187,7 @@ def train_model(args, train_gen, val_gen):
     return model
 
 
-def get_data(args):
+def get_generators(args):
     train_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
         directory='{}/{}/train'.format(args['data_dir'], args['group']),
         class_mode='categorical',
@@ -236,36 +222,44 @@ def model_experiments():
     from config import args
 
     models = ['resnet18']
-    groups = ['binary', 'family', 'type']
+    groups = ['binary', 'type', 'family']
     pretraining = [False]
 
-    loss_type = 'categorical_focal_loss'  # categorical_crossentropy, categorical_focal_loss
-    reweight_method = 'effective_num'  # effective_num, None
+    color_mode = 'grayscale'
+    loss_type = 'categorical_crossentropy'  # categorical_crossentropy, categorical_focal_loss
+    reweight_method = None  # effective_num, None
+    devices = [0, 1, 2]
 
     params = list(itertools.product(*[models, groups, pretraining]))
 
-    Parallel(n_jobs=1)(
-        delayed(run)(args, idx, model, group, pretrain, loss_type, reweight_method)
+    Parallel(n_jobs=3)(
+        delayed(run)(args, idx, model, group, pretrain, loss_type, reweight_method, color_mode, devices[idx])
         for idx, (model, group, pretrain) in enumerate(tqdm(params)))
 
 
-def run(args_og, idx, model, group, pretrain, loss_type, reweight_method):
-    # idx += 3
+def run(args_og, idx, model, group, pretrain, loss_type, reweight_method, color_mode, device):
+    # idx += 1
     args = copy.deepcopy(args_og)
-    args['devices'] = [idx]
+    args['devices'] = [device]
     args['model'] = model
     args['group'] = group
     args['pretrain'] = pretrain
     args['loss_type'] = loss_type
     args['reweight_method'] = reweight_method
+    args['color_mode'] = color_mode
 
-    y_train, y_val, y_test = create_image_symlinks(args)
-    train_gen, val_gen, test_gen = get_data(args)
+    if args['color_mode'] == 'grayscale':
+        args['num_channels'] = 1
+    else:
+        args['num_channels'] = 3
 
+    create_image_symlinks(args)
+    train_gen, val_gen, test_gen = get_generators(args)
+
+    args['y_train'] = train_gen.labels
     args['class_indexes'] = list(val_gen.class_indices.values())
     args['class_labels'] = list(val_gen.class_indices.keys())
     args['num_classes'] = len(val_gen.class_indices.keys())
-    args['y_train'] = y_train
 
     model = train_model(args, train_gen, val_gen)
 
@@ -278,13 +272,13 @@ def run(args_og, idx, model, group, pretrain, loss_type, reweight_method):
 def main():
     from config import args
 
-    y_train, y_val, y_test = create_image_symlinks(args)
-    train_gen, val_gen, test_gen = get_data(args)
+    create_image_symlinks(args)
+    train_gen, val_gen, test_gen = get_generators(args)
 
+    args['y_train'] = train_gen.labels
     args['class_indexes'] = list(val_gen.class_indices.values())
     args['class_labels'] = list(val_gen.class_indices.keys())
     args['num_classes'] = len(val_gen.class_indices.keys())
-    args['y_train'] = y_train
 
     model = train_model(args, train_gen, val_gen)
 
