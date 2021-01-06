@@ -289,5 +289,5 @@ def main():
 
 
 if __name__ == '__main__':
-    # model_experiments()
-    main()
+    model_experiments()
+    # main()
