@@ -6,7 +6,7 @@ args = {
     'color_mode': 'grayscale',  # rgb, grayscale
 
     'epochs': 100,
-    'train_ratio': 1.0,
+    'train_ratio': 1.0,  # don't change
     'model': 'resnet18',
     'pretrain': False,
     'types_to_exclude': [],

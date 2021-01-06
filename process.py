@@ -11,33 +11,33 @@ def get_split_info(args):
     with open(os.getcwd() + '/split_info/{}/{}/test.txt'.format(args['group'], args['train_ratio']), 'r') as f:
         lines_test = f.readlines()
 
-    files_train = [args['data_dir'] + file.strip() + '.png' for file in lines_train]
-    files_val = [args['data_dir'] + file.strip() + '.png' for file in lines_val]
-    files_test = [args['data_dir'] + file.strip() + '.png' for file in lines_test]
+    files_train = [args['image_dir'] + file.strip() + '.png' for file in lines_train]
+    files_val = [args['image_dir'] + file.strip() + '.png' for file in lines_val]
+    files_test = [args['image_dir'] + file.strip() + '.png' for file in lines_test]
 
     if args['group'] == 'type':
-        graph_labels = sorted(list(set([file.split('malnet-image/data/')[1].rsplit('/', 2)[0] for file in files_train])))
+        graph_labels = sorted(list(set([file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] for file in files_train])))
         label_dict = {t: idx for idx, t in enumerate(graph_labels)}
 
-        train_labels = [label_dict[file.split('malnet-image/data/')[1].rsplit('/', 2)[0]] for file in files_train]
-        val_labels = [label_dict[file.split('malnet-image/data/')[1].rsplit('/', 2)[0]] for file in files_val]
-        test_labels = [label_dict[file.split('malnet-image/data/')[1].rsplit('/', 2)[0]] for file in files_test]
+        train_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0]] for file in files_train]
+        val_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0]] for file in files_val]
+        test_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0]] for file in files_test]
 
     elif args['group'] == 'family':
-        graph_labels = sorted(list(set([file.split('malnet-image/data/')[1].rsplit('/', 2)[1] for file in files_train])))
+        graph_labels = sorted(list(set([file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1] for file in files_train])))
         label_dict = {t: idx for idx, t in enumerate(graph_labels)}
 
-        train_labels = [label_dict[file.split('malnet-image/data/')[1].rsplit('/', 2)[1]] for file in files_train]
-        val_labels = [label_dict[file.split('malnet-image/data/')[1].rsplit('/', 2)[1]] for file in files_val]
-        test_labels = [label_dict[file.split('malnet-image/data/')[1].rsplit('/', 2)[1]] for file in files_test]
+        train_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1]] for file in files_train]
+        val_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1]] for file in files_val]
+        test_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1]] for file in files_test]
 
     elif args['group'] == 'binary':
         graph_labels = ['benign', 'malicious']
         label_dict = {t: idx for idx, t in enumerate(graph_labels)}
 
-        train_labels = [0 if 'benign' in file.split('malnet-image/data/')[1].rsplit('/', 2)[0] else 1 for file in files_train]
-        val_labels = [0 if 'benign' in file.split('malnet-image/data/')[1].rsplit('/', 2)[0] else 1 for file in files_val]
-        test_labels = [0 if 'benign' in file.split('malnet-image/data/')[1].rsplit('/', 2)[0] else 1 for file in files_test]
+        train_labels = [0 if 'benign' in file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] else 1 for file in files_train]
+        val_labels = [0 if 'benign' in file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] else 1 for file in files_val]
+        test_labels = [0 if 'benign' in file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] else 1 for file in files_test]
 
     else:
         print('Group does not exist')
@@ -54,10 +54,10 @@ def create_image_symlinks(args):
     files_train, files_val, files_test, _, _, _, _ = get_split_info(args)
 
     # create symlinks for train/val/test folders
-    dst_dir = args['data_dir'] + '/{}/'.format(args['group'])
+    dst_dir = args['data_dir'] + '{}/'.format(args['group'])
 
     for src_path in files_train:
-        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image/data/', dst_dir + 'train/')
+        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image-256x256/', dst_dir + 'train/')
 
         if args['group'] == 'binary':
             if 'benign' not in dst_path:
@@ -73,7 +73,7 @@ def create_image_symlinks(args):
             os.symlink(src_path, dst_path)
 
     for src_path in files_val:
-        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image/data/', dst_dir + 'val/')
+        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image-256x256/', dst_dir + 'val/')
 
         if args['group'] == 'binary':
             if 'benign' not in dst_path:
@@ -89,7 +89,7 @@ def create_image_symlinks(args):
             os.symlink(src_path, dst_path)
 
     for src_path in files_test:
-        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image/data/', dst_dir + 'test/')
+        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image-256x256/', dst_dir + 'test/')
 
         if args['group'] == 'binary':
             if 'benign' not in dst_path:

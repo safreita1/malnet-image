@@ -189,7 +189,7 @@ def train_model(args, train_gen, val_gen):
 
 def get_generators(args):
     train_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
-        directory='{}/{}/train'.format(args['data_dir'], args['group']),
+        directory='{}{}/train'.format(args['data_dir'], args['group']),
         class_mode='categorical',
         color_mode=args['color_mode'],
         batch_size=args['batch_size'],
@@ -198,7 +198,7 @@ def get_generators(args):
     )
 
     val_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
-        directory='{}/{}/val'.format(args['data_dir'], args['group']),
+        directory='{}{}/val'.format(args['data_dir'], args['group']),
         class_mode='categorical',
         color_mode=args['color_mode'],
         batch_size=args['batch_size'],
@@ -207,7 +207,7 @@ def get_generators(args):
     )
 
     test_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
-        directory='{}/{}/test'.format(args['data_dir'], args['group']),
+        directory='{}{}/test'.format(args['data_dir'], args['group']),
         class_mode='categorical',
         color_mode=args['color_mode'],
         batch_size=args['batch_size'],
@@ -289,5 +289,5 @@ def main():
 
 
 if __name__ == '__main__':
-    model_experiments()
-    # main()
+    # model_experiments()
+    main()
