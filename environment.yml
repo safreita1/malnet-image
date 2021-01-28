@@ -112,4 +112,5 @@ dependencies:
     - shapely==1.7.1
     - tifffile==2020.9.3
     - tqdm==4.54.0
+    - dill==0.3.3
 

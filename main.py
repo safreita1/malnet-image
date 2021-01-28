@@ -1,33 +1,33 @@
 import os
-import copy
-import itertools
-import multiprocessing
-from joblib import Parallel, delayed
-
 import warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+import copy
 import numpy as np
+import multiprocessing
 import tensorflow as tf
-gpus = tf.config.experimental.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-    except RuntimeError as e:
-        print(e)
 
 from tqdm import tqdm
 from pprint import pprint
 from tensorflow import keras
+from joblib import Parallel, delayed
 from classification_models.keras import Classifiers
 from tensorflow.keras.callbacks import Callback
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import confusion_matrix, f1_score, classification_report, roc_curve, roc_auc_score
 
+from losses import get_loss
 from process import create_image_symlinks
-from losses import categorical_focal_loss
+
+models = {
+    'resnet50': keras.applications.ResNet50,
+    'resnet101': keras.applications.ResNet101,
+    'densenet121': keras.applications.DenseNet121,
+    'densenet169': keras.applications.DenseNet169,
+    'mobilenet': keras.applications.MobileNet,
+    'mobilenetv2': keras.applications.MobileNetV2
+}
 
 
 class Metrics(Callback):
@@ -92,21 +92,6 @@ def log_info(args, epoch, y_true, y_pred, y_scores, data_type='val'):
             pprint('AUC class scores: {}'.format(auc_class_scores), stream=f)
 
 
-def get_effective_class_weights(args):
-    '''
-        Determines class weighting according to the following paper
-        - https://arxiv.org/abs/1901.05555
-    ''' 
-
-    unique, class_frequencies = np.unique(args['y_train'], return_counts=True)
-    effective_num = [(1-args['reweight_beta']) / (1 - np.power(args['reweight_beta'], c_i)) for c_i in class_frequencies]
-    class_weights = effective_num / sum(effective_num) * args['num_classes']
-    print('calculated class frequencies')
-    class_weights = {k: v for k, v in enumerate(class_weights)}
-
-    return class_weights
-
-
 def evaluate(data_gen, model):
     y_pred = []
     y_scores = []
@@ -139,35 +124,32 @@ def train_model(args, train_gen, val_gen):
     os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
     os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(str(d) for d in args['devices'])
 
-    args['log_dir'] = os.getcwd() + '/info/logs/num_excluded={}/group={}/color={}/pretrain={}/model={}_loss={}_reweight={}_beta={}/epochs={}/'.format(
-        len(args['types_to_exclude']), args['group'], args['color_mode'], args['pretrain'], args['model'], args['loss_type'], args['reweight_method'], args['reweight_beta'],  args['epochs'])
+    args['log_dir'] = os.getcwd() + '/info/logs/malnet_tiny={}/group={}/color={}/pretrain={}/model={}_loss={}_alpha={}_reweight={}_beta={}/epochs={}/'.format(
+        args['malnet_tiny'], args['group'], args['color_mode'], args['weights'], args['model'], args['loss'], args['alpha'], args['reweight'], args['reweight_beta'],  args['epochs'])
     os.makedirs(args['log_dir'], exist_ok=True)
+
+    if args['color_mode'] == 'grayscale':
+        args['num_channels'] = 1
+    else:
+        args['num_channels'] = 3
 
     input_shape = (args['im_size'], args['im_size'], args['num_channels'])
 
-    if args['pretrain']:
-        ModelType, _ = Classifiers.get(args['model'])
-        model = ModelType(include_top=False, weights='imagenet', classes=args['num_classes'], input_shape=input_shape)
+    if args['weights'] is 'imagenet':
+        model = models[args['model']](include_top=False, weights=args['weights'], input_shape=input_shape, classes=args['num_classes'])
         model = build_transfer_model(args, model)
     else:
-        ModelType, _ = Classifiers.get(args['model'])
-        model = ModelType(include_top=True, weights=None, classes=args['num_classes'], input_shape=input_shape)
-
-    if args['reweight_method'] == 'effective_num':
-        class_weights = get_effective_class_weights(args)  
-    else:
-        class_weights = {i: 1 for i in range(args['num_classes'])}
-
-    if args['loss_type'] == 'categorical_focal_loss':
-        if type(class_weights) is dict:
-            alpha = [class_weights[i] for i in class_weights.keys()]
+        if 'mobile' in args['model']:
+            model = models[args['model']](weights=args['weights'], input_shape=input_shape, classes=args['num_classes'], alpha=args['alpha'])
+        elif 'resnet18' in args['model']:
+            args['alpha'] = 0
+            model, _ = Classifiers.get(args['model'])
+            model = model(weights=args['weights'], input_shape=input_shape, classes=args['num_classes'])
         else:
-            alpha = class_weights
-        loss = [categorical_focal_loss(alpha=[alpha], gamma=2)]
-        class_weights = {i: 1.0 / args['num_classes'] for i in range(args['num_classes'])}  # class weighting already incorporated in focal loss alpha
-    else:
-        loss = args['loss_type']
+            args['alpha'] = 0
+            model = models[args['model']](weights=args['weights'], input_shape=input_shape, classes=args['num_classes'])
 
+    loss, class_weights = get_loss(args)
     model.compile(loss=loss, optimizer='adam', metrics=[])
 
     model.fit(
@@ -189,7 +171,7 @@ def train_model(args, train_gen, val_gen):
 
 def get_generators(args):
     train_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
-        directory='{}{}/train'.format(args['data_dir'], args['group']),
+        directory='{}malnet_tiny={}/{}/train'.format(args['data_dir'], args['malnet_tiny'], args['group']),
         class_mode='categorical',
         color_mode=args['color_mode'],
         batch_size=args['batch_size'],
@@ -198,7 +180,7 @@ def get_generators(args):
     )
 
     val_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
-        directory='{}{}/val'.format(args['data_dir'], args['group']),
+        directory='{}malnet_tiny={}/{}/val'.format(args['data_dir'], args['malnet_tiny'], args['group']),
         class_mode='categorical',
         color_mode=args['color_mode'],
         batch_size=args['batch_size'],
@@ -207,7 +189,7 @@ def get_generators(args):
     )
 
     test_gen = ImageDataGenerator(rescale=1. / 255).flow_from_directory(
-        directory='{}{}/test'.format(args['data_dir'], args['group']),
+        directory='{}malnet_tiny={}/{}/test'.format(args['data_dir'], args['malnet_tiny'], args['group']),
         class_mode='categorical',
         color_mode=args['color_mode'],
         batch_size=args['batch_size'],
@@ -218,76 +200,38 @@ def get_generators(args):
     return train_gen, val_gen, test_gen
 
 
+def run(args_og, group, device):
+    args = copy.deepcopy(args_og)
+
+    args['devices'] = [device]
+    args['group'] = group
+
+    create_image_symlinks(args)
+    train_gen, val_gen, test_gen = get_generators(args)
+
+    args['y_train'] = train_gen.labels
+    args['class_indexes'] = list(val_gen.class_indices.values())
+    args['class_labels'] = list(val_gen.class_indices.keys())
+    args['num_classes'] = len(val_gen.class_indices.keys())
+
+    model = train_model(args, train_gen, val_gen)
+
+    y_pred, y_scores = evaluate(test_gen, model)
+    y_true = test_gen.classes.tolist()
+
+    log_info(args, 'based on best val model', y_true, y_pred, y_scores, data_type='test')
+
+
 def model_experiments():
     from config import args
 
-    models = ['resnet18']
-    groups = ['binary', 'type', 'family']
-    pretraining = [False]
+    devices = [6]
+    groups = ['binary']
 
-    color_mode = 'grayscale'
-    loss_type = 'categorical_crossentropy'  # categorical_crossentropy, categorical_focal_loss
-    reweight_method = None  # effective_num, None
-    devices = [0, 1, 2]
-
-    params = list(itertools.product(*[models, groups, pretraining]))
-
-    Parallel(n_jobs=3)(
-        delayed(run)(args, idx, model, group, pretrain, loss_type, reweight_method, color_mode, devices[idx])
-        for idx, (model, group, pretrain) in enumerate(tqdm(params)))
-
-
-def run(args_og, idx, model, group, pretrain, loss_type, reweight_method, color_mode, device):
-    # idx += 1
-    args = copy.deepcopy(args_og)
-    args['devices'] = [device]
-    args['model'] = model
-    args['group'] = group
-    args['pretrain'] = pretrain
-    args['loss_type'] = loss_type
-    args['reweight_method'] = reweight_method
-    args['color_mode'] = color_mode
-
-    if args['color_mode'] == 'grayscale':
-        args['num_channels'] = 1
-    else:
-        args['num_channels'] = 3
-
-    create_image_symlinks(args)
-    train_gen, val_gen, test_gen = get_generators(args)
-
-    args['y_train'] = train_gen.labels
-    args['class_indexes'] = list(val_gen.class_indices.values())
-    args['class_labels'] = list(val_gen.class_indices.keys())
-    args['num_classes'] = len(val_gen.class_indices.keys())
-
-    model = train_model(args, train_gen, val_gen)
-
-    y_pred, y_scores = evaluate(test_gen, model)
-    y_true = test_gen.classes.tolist()
-
-    log_info(args, 'based on best val model', y_true, y_pred, y_scores, data_type='test')
-
-
-def main():
-    from config import args
-
-    create_image_symlinks(args)
-    train_gen, val_gen, test_gen = get_generators(args)
-
-    args['y_train'] = train_gen.labels
-    args['class_indexes'] = list(val_gen.class_indices.values())
-    args['class_labels'] = list(val_gen.class_indices.keys())
-    args['num_classes'] = len(val_gen.class_indices.keys())
-
-    model = train_model(args, train_gen, val_gen)
-
-    y_pred, y_scores = evaluate(test_gen, model)
-    y_true = test_gen.classes.tolist()
-
-    log_info(args, 'based on best val model', y_true, y_pred, y_scores, data_type='test')
+    Parallel(n_jobs=len(groups))(
+        delayed(run)(args, group, devices[idx])
+        for idx, group in enumerate(tqdm(groups)))
 
 
 if __name__ == '__main__':
     model_experiments()
-    # main()

@@ -2,7 +2,7 @@
 Define our custom loss function.
 """
 import numpy as np
-from keras import backend as K
+from tensorflow.keras import backend as K
 import tensorflow as tf
 
 import dill
@@ -104,6 +104,40 @@ def categorical_focal_loss(alpha, gamma=2.):
         return K.mean(K.sum(loss, axis=-1))
 
     return categorical_focal_loss_fixed
+
+
+def get_effective_class_weights(args):
+    '''
+        Determines class weighting according to the following paper
+        - https://arxiv.org/abs/1901.05555
+    '''
+
+    unique, class_frequencies = np.unique(args['y_train'], return_counts=True)
+    effective_num = [(1-args['reweight_beta']) / (1 - np.power(args['reweight_beta'], c_i)) for c_i in class_frequencies]
+    class_weights = effective_num / sum(effective_num) * args['num_classes']
+    print('calculated class frequencies')
+    class_weights = {k: v for k, v in enumerate(class_weights)}
+
+    return class_weights
+
+
+def get_loss(args):
+    if args['reweight'] == 'effective_num':
+        class_weights = get_effective_class_weights(args)
+    else:
+        class_weights = {i: 1 for i in range(args['num_classes'])}
+
+    if args['loss'] == 'categorical_focal_loss':
+        if type(class_weights) is dict:
+            alpha = [class_weights[i] for i in class_weights.keys()]
+        else:
+            alpha = class_weights
+        loss = [categorical_focal_loss(alpha=[alpha], gamma=2)]
+        class_weights = {i: 1.0 / args['num_classes'] for i in range(args['num_classes'])}  # class weighting already incorporated in focal loss alpha
+    else:
+        loss = args['loss']
+
+    return loss, class_weights
 
 
 if __name__ == '__main__':

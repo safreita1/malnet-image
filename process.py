@@ -1,43 +1,62 @@
 import os
 
 
+def filter_types(args, lines):
+    types_to_exclude = ['adware', 'trojan', 'benign', 'riskware']
+
+    filtered_files = []
+    files = [args['image_dir'] + file.strip() + '.png' for file in lines]
+
+    for file in files:
+        mtype = file.split('malnet-images/')[1].rsplit('/', 2)[0]
+        if mtype not in types_to_exclude:
+            filtered_files.append(file)
+
+    return filtered_files
+
+
 def get_split_info(args):
-    with open(os.getcwd() + '/split_info/{}/{}/train.txt'.format(args['group'], args['train_ratio']), 'r') as f:
+    with open(os.getcwd() + '/split_info/{}/train.txt'.format(args['group']), 'r') as f:
         lines_train = f.readlines()
 
-    with open(os.getcwd() + '/split_info/{}/{}/val.txt'.format(args['group'], args['train_ratio']), 'r') as f:
+    with open(os.getcwd() + '/split_info/{}/val.txt'.format(args['group']), 'r') as f:
         lines_val = f.readlines()
 
-    with open(os.getcwd() + '/split_info/{}/{}/test.txt'.format(args['group'], args['train_ratio']), 'r') as f:
+    with open(os.getcwd() + '/split_info/{}/test.txt'.format(args['group']), 'r') as f:
         lines_test = f.readlines()
 
-    files_train = [args['image_dir'] + file.strip() + '.png' for file in lines_train]
-    files_val = [args['image_dir'] + file.strip() + '.png' for file in lines_val]
-    files_test = [args['image_dir'] + file.strip() + '.png' for file in lines_test]
+    if args['malnet_tiny']:
+        files_train = filter_types(args, lines_train)
+        files_val = filter_types(args, lines_val)
+        files_test = filter_types(args, lines_test)
+    else:
+        files_train = [args['image_dir'] + file.strip() + '.png' for file in lines_train]
+        files_val = [args['image_dir'] + file.strip() + '.png' for file in lines_val]
+        files_test = [args['image_dir'] + file.strip() + '.png' for file in lines_test]
 
     if args['group'] == 'type':
-        graph_labels = sorted(list(set([file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] for file in files_train])))
+        graph_labels = sorted(list(set([file.split('malnet-images/')[1].rsplit('/', 2)[0] for file in files_train])))
         label_dict = {t: idx for idx, t in enumerate(graph_labels)}
 
-        train_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0]] for file in files_train]
-        val_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0]] for file in files_val]
-        test_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0]] for file in files_test]
+        train_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[0]] for file in files_train]
+        val_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[0]] for file in files_val]
+        test_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[0]] for file in files_test]
 
     elif args['group'] == 'family':
-        graph_labels = sorted(list(set([file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1] for file in files_train])))
+        graph_labels = sorted(list(set([file.split('malnet-images/')[1].rsplit('/', 2)[1] for file in files_train])))
         label_dict = {t: idx for idx, t in enumerate(graph_labels)}
 
-        train_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1]] for file in files_train]
-        val_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1]] for file in files_val]
-        test_labels = [label_dict[file.split('malnet-image-256x256/')[1].rsplit('/', 2)[1]] for file in files_test]
+        train_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[1]] for file in files_train]
+        val_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[1]] for file in files_val]
+        test_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[1]] for file in files_test]
 
     elif args['group'] == 'binary':
         graph_labels = ['benign', 'malicious']
         label_dict = {t: idx for idx, t in enumerate(graph_labels)}
 
-        train_labels = [0 if 'benign' in file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] else 1 for file in files_train]
-        val_labels = [0 if 'benign' in file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] else 1 for file in files_val]
-        test_labels = [0 if 'benign' in file.split('malnet-image-256x256/')[1].rsplit('/', 2)[0] else 1 for file in files_test]
+        train_labels = [0 if 'benign' in file.split('malnet-images/')[1].rsplit('/', 2)[0] else 1 for file in files_train]
+        val_labels = [0 if 'benign' in file.split('malnet-images/')[1].rsplit('/', 2)[0] else 1 for file in files_val]
+        test_labels = [0 if 'benign' in file.split('malnet-images/')[1].rsplit('/', 2)[0] else 1 for file in files_test]
 
     else:
         print('Group does not exist')
@@ -54,10 +73,10 @@ def create_image_symlinks(args):
     files_train, files_val, files_test, _, _, _, _ = get_split_info(args)
 
     # create symlinks for train/val/test folders
-    dst_dir = args['data_dir'] + '{}/'.format(args['group'])
+    dst_dir = args['data_dir'] + 'malnet_tiny={}/{}/'.format(args['malnet_tiny'], args['group'])
 
     for src_path in files_train:
-        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image-256x256/', dst_dir + 'train/')
+        dst_path = src_path.replace(args['image_dir'], dst_dir + 'train/')
 
         if args['group'] == 'binary':
             if 'benign' not in dst_path:
@@ -73,7 +92,7 @@ def create_image_symlinks(args):
             os.symlink(src_path, dst_path)
 
     for src_path in files_val:
-        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image-256x256/', dst_dir + 'val/')
+        dst_path = src_path.replace(args['image_dir'], dst_dir + 'val/')
 
         if args['group'] == 'binary':
             if 'benign' not in dst_path:
@@ -89,7 +108,7 @@ def create_image_symlinks(args):
             os.symlink(src_path, dst_path)
 
     for src_path in files_test:
-        dst_path = src_path.replace('/localscratch/sfreitas3/malnet-image-256x256/', dst_dir + 'test/')
+        dst_path = src_path.replace(args['image_dir'], dst_dir + 'test/')
 
         if args['group'] == 'binary':
             if 'benign' not in dst_path:
