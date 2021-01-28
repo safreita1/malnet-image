@@ -25,12 +25,12 @@ With the generous permission of the [AndroZoo](https://androzoo.uni.lu/) we coll
 specifically selecting APKs containing both a family and type label obtained from 
 the [Euphony](https://github.com/fmind/euphony) classification structure.
 
-![Binary image](images/binary-image.png)
+![Binary image](images/binary-image.png "Android APK binary image")
 
 # What can we do with these images?
 Great question! The scale and diversity of the MalNet database offers researchers and practioners 
-the ability to conduct industry-scale experiments on malware detection and classification using
-binary images. In addition, MalNet offers researchers a chance to: 
+the ability to conduct industry-scale experiments on **malware detection** and **classification**
+using binary images. In addition, MalNet offers researchers a chance to: 
     
 - study **imbalanced classification** on a large-scale cybersecurity database with a natural 
 imbalance ratio of 16,901x,
@@ -38,7 +38,7 @@ imbalance ratio of 16,901x,
 security analysts can interpret and trust the model,
 - and investigate **zero-shot learning** techniques in a constantly evolving landscape, where detecting and categorizing new variants of malware can be a measure of national security.
 
-![Binary image](images/roc-curve.png)
+![ROC curve](images/roc-curve.png "Malware detecion ROC curve using MalNet")
 
 ### How do we download and explore MalNet?
 We have designed and developed **[MalNet Explorer](https://www.mal-net.org/explore)**, an interactive 
@@ -46,7 +46,10 @@ visualization tool to help users explore the data before downloading.
 Figure 3 shows MalNet Explorer’s desktop web interface and its main components. 
 MalNet Explorer and the data is available online at: www.mal-net.org.
 
-![Comparing Graph Databases](images/malnet-explorer.png)
+We also release **MalNet Tiny**, a small-scale version of MalNet to help users rapidly prototype 
+new ideas in a fraction of the time.
+
+![Comparing Graph Databases](images/malnet-explorer.png "MalNet Explorer)
 
 
 ### How to run the code?
