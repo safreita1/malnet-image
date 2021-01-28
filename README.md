@@ -13,6 +13,8 @@ We release **[MalNet](https://www.mal-net.org)**, which contains over **1.2 bina
 across a hierarchy of 47 types and 696 families of classes. Compared to the popular [Malimg](https://vision.ece.ucsb.edu/research/signal-processing-malware-analysis) 
 database, MalNet offers **133x more images**, and **27x more classes**.
 
+![Binary image](images/malware-comparison.png "Android APK binary image")
+
 
 ### What is a binary image?
 
