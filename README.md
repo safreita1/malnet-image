@@ -49,7 +49,7 @@ MalNet Explorer and the data is available online at: www.mal-net.org.
 We also release **MalNet Tiny**, a small-scale version of MalNet to help users rapidly prototype 
 new ideas in a fraction of the time.
 
-![Comparing Graph Databases](images/malnet-explorer.png "MalNet Explorer)
+![Comparing Graph Databases](images/malnet-explorer.png "MalNet Explorer")
 
 
 ### How to run the code?
