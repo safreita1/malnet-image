@@ -47,7 +47,7 @@ Figure 3 shows MalNet Explorer’s desktop web interface and its main components
 MalNet Explorer and the data is available online at: www.mal-net.org.
 
 We also release **MalNet Tiny**, a small-scale version of MalNet to help users rapidly prototype 
-new ideas in a fraction of the time.
+new ideas in a fraction of the time. MalNet Tiny can be downloaded from the MalNet [website](www.mal-net.org).
 
 ![Comparing Graph Databases](images/malnet-explorer.png "MalNet Explorer")
 
