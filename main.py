@@ -225,8 +225,8 @@ def run(args_og, group, device):
 def model_experiments():
     from config import args
 
-    devices = [6]
-    groups = ['binary']
+    devices = [1, 2, 3]
+    groups = ['binary', 'type', 'family']
 
     Parallel(n_jobs=len(groups))(
         delayed(run)(args, group, devices[idx])

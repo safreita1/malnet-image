@@ -9,7 +9,7 @@ args = {
     'color_mode': 'grayscale',  # options: rgb, grayscale
 
     'epochs': 100,
-    'model': 'resnet18',
+    'model': 'resnet101',
     'alpha': 1.0,  # sets MobileNet model size
     'weights': None,  # options: None (which is random), imagenet
     'loss': 'categorical_crossentropy',  # options: categorical_crossentropy, categorical_focal_loss
