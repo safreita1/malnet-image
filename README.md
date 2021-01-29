@@ -53,7 +53,9 @@ new ideas in a fraction of the time. MalNet Tiny can be downloaded from the MalN
 
 
 ## How to run the code?
-1. Pre-processing functions to parse the train/val/test split information from the MalNet website, along with 
+1. The code was tested in Python 3.6. All of the dependencies can be loaded using the enviornment.yml file.
+
+2. Pre-processing functions to parse the train/val/test split information from the MalNet website, along with 
 functions to load the data into Keras are in preprocess.py. 
 
 2. The experiments from the [arXiv paper](https://arxiv.org/abs/2011.07682) can be run using main.py.
