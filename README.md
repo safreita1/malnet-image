@@ -16,7 +16,7 @@ database, MalNet offers **133x more images**, and **27x more classes**.
 Check out the full paper on [arXiv]()!
 
 
-### What is a binary image?
+## What is a binary image?
 
 Binary images represent the bytecode of an executable as a 2D image (see figure below), and can be statically extracted from 
 many types of software (e.g., EXE, PE, APK). We use the Android ecosystem due to its large market share, easy 
@@ -27,7 +27,7 @@ the [Euphony](https://github.com/fmind/euphony) classification structure.
 
 ![Binary image](images/binary-image.png "Android APK binary image")
 
-# What can we do with these images?
+## What can we do with these images?
 Great question! The scale and diversity of the MalNet database offers researchers and practioners 
 the ability to conduct industry-scale experiments on **malware detection** and **classification**
 using binary images. In addition, MalNet offers researchers a chance to: 
@@ -40,7 +40,7 @@ security analysts can interpret and trust the model,
 
 ![ROC curve](images/roc-curve.png "Malware detecion ROC curve using MalNet")
 
-### How do we download and explore MalNet?
+## How do we download and explore MalNet?
 We have designed and developed **[MalNet Explorer](https://www.mal-net.org/explore)**, an interactive 
 visualization tool to help users explore the data before downloading.
 Figure 3 shows MalNet Explorer’s desktop web interface and its main components. 
@@ -52,7 +52,7 @@ new ideas in a fraction of the time. MalNet Tiny can be downloaded from the MalN
 ![Comparing Graph Databases](images/malnet-explorer.png "MalNet Explorer")
 
 
-### How to run the code?
+## How to run the code?
 1. Pre-processing functions to parse the train/val/test split information from the MalNet website, along with 
 functions to load the data into Keras are in preprocess.py. 
 
