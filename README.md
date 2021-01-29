@@ -13,6 +13,8 @@ We release **[MalNet](https://www.mal-net.org)**, which contains over **1.2 bina
 across a hierarchy of 47 types and 696 families of classes. Compared to the popular [Malimg](https://vision.ece.ucsb.edu/research/signal-processing-malware-analysis) 
 database, MalNet offers **133x more images**, and **27x more classes**.
 
+Check out the full paper on [arXiv]()!
+
 
 ### What is a binary image?
 
@@ -51,6 +53,9 @@ new ideas in a fraction of the time. MalNet Tiny can be downloaded from the MalN
 
 
 ### How to run the code?
-The experiments we conducted in the [arXiv paper](https://arxiv.org/abs/2011.07682) can be run using main.py.
+1. Pre-processing functions to parse the train/val/test split information from the MalNet website, along with 
+functions to load the data into Keras are in preprocess.py. 
+
+2. The experiments from the [arXiv paper](https://arxiv.org/abs/2011.07682) can be run using main.py.
 
 
