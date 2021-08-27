@@ -101,7 +101,7 @@ def evaluate(data_gen, model):
         pred = model.predict(x)
 
         y_pred.extend(np.argmax(pred, axis=1).tolist())
-        y_scores.extend(pred[:, 1].tolist())
+        y_scores.extend(pred[:, 1].tolist())  # only used in binary setting
 
         batches += 1
         if batches == len(data_gen):
@@ -111,7 +111,7 @@ def evaluate(data_gen, model):
 
 
 def build_transfer_model(args, base_model):
-    base_model.trainable = False
+    base_model.trainable = True
 
     x = keras.layers.GlobalAveragePooling2D()(base_model.output)
     output = keras.layers.Dense(args['num_classes'], activation='softmax')(x)
@@ -225,8 +225,8 @@ def run(args_og, group, device):
 def model_experiments():
     from config import args
 
-    devices = [1, 2, 3]
-    groups = ['binary', 'type', 'family']
+    devices = [1]  # [1, 2, 3]
+    groups = ['type']  # , 'type', 'family'
 
     Parallel(n_jobs=len(groups))(
         delayed(run)(args, group, devices[idx])

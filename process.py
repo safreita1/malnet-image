@@ -35,24 +35,24 @@ def get_split_info(args):
         files_test = [args['image_dir'] + file.strip() + '.png' for file in lines_test]
 
     if args['group'] == 'type':
-        graph_labels = sorted(list(set([file.split('malnet-images/')[1].rsplit('/', 2)[0] for file in files_train])))
-        label_dict = {t: idx for idx, t in enumerate(graph_labels)}
+        labels = sorted(list(set([file.split('malnet-images/')[1].rsplit('/', 2)[0] for file in files_train])))
+        label_dict = {t: idx for idx, t in enumerate(labels)}
 
         train_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[0]] for file in files_train]
         val_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[0]] for file in files_val]
         test_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[0]] for file in files_test]
 
     elif args['group'] == 'family':
-        graph_labels = sorted(list(set([file.split('malnet-images/')[1].rsplit('/', 2)[1] for file in files_train])))
-        label_dict = {t: idx for idx, t in enumerate(graph_labels)}
+        labels = sorted(list(set([file.split('malnet-images/')[1].rsplit('/', 2)[1] for file in files_train])))
+        label_dict = {t: idx for idx, t in enumerate(labels)}
 
         train_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[1]] for file in files_train]
         val_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[1]] for file in files_val]
         test_labels = [label_dict[file.split('malnet-images/')[1].rsplit('/', 2)[1]] for file in files_test]
 
     elif args['group'] == 'binary':
-        graph_labels = ['benign', 'malicious']
-        label_dict = {t: idx for idx, t in enumerate(graph_labels)}
+        labels = ['benign', 'malicious']
+        label_dict = {t: idx for idx, t in enumerate(labels)}
 
         train_labels = [0 if 'benign' in file.split('malnet-images/')[1].rsplit('/', 2)[0] else 1 for file in files_train]
         val_labels = [0 if 'benign' in file.split('malnet-images/')[1].rsplit('/', 2)[0] else 1 for file in files_val]
